@@ -13,6 +13,7 @@ CORS (app)
 
 authors_db = []
 books_db = []
+subcribers =[] #temporariamente, fazer função para trazer do main.py
 
 query = QueryType()
 mutation = MutationType()
@@ -31,6 +32,9 @@ def resolve_create_author(_, info, name):
     author = Author(id=len(authors_db) + 1, name=name)
     authors_db.append(author)
     gravarAuthorDB(name)
+    #Notificar todos as conexões websocket conectados (assinantes)
+    for subscriber in subcribers
+        asyncio.create_task(subcriber.send_json({"type": "authorAdicionado", "payloand": author}))
     return author
 
 @mutation.field("updateAuthor")
