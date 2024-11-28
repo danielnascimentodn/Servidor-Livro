@@ -1,9 +1,11 @@
-from ariadne import QueryType,MutationType
+from ariadne import QueryType,MutationType, SubscriptionType
 from models import Author,Book
 from flask_cors import CORS
 from flask import Flask, g
 from banco import gravarAuthorDB, gravarBookDB
-
+import asyncio
+from asyncio import get_event_loop
+from starlette.websockets import WebSocket
 
 app = Flask (__name__)
 CORS (app)
@@ -14,6 +16,7 @@ books_db = []
 
 query = QueryType()
 mutation = MutationType()
+subscription = SubscriptionType()
 
 @query.field("authors")
 def resolve_authors(_,info):
@@ -48,6 +51,7 @@ def resolve_delete_author(_, info, id):
 def resolve_update_author(_, title , authorIds):
     book = Book (id=len(books_db) + 1, title = title, author_ids=authorIds)
     books_db.append(book)
+    gravarBookDB()
     return book
 
 @mutation.field("updateBook")
@@ -63,3 +67,11 @@ def resolve_update_author(_,id , title , authorIds):
 def resolve_delete_author(_, title , id):
     global books_db
     books_db=[b for b in books_db if b.id != id]
+
+@subscription.source("bookAdicionado")
+async def source_book_adicionado(_, info):
+    while True:
+        await asyncio.sleep(1)
+@subscription.field("bookAdicionado")
+def resolve_book_adicionado(obj, info):
+    return obj["payload"]
