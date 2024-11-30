@@ -1,9 +1,8 @@
 from fastapi import FastAPI, WebSocket
 from ariadne.asgi import GraphQL
-from resolvers import query,mutation, subscription
+from resolvers import query,mutation, subscription, setSubscribers, deleteSubscriber
 from banco import init_db
-from ariadne import make_executable_schema
-from ariadne import gql
+from ariadne import make_executable_schema, gql
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,15 +17,13 @@ origins =[
 #Confirgura CORS para permitir requesições de outras origens
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],#origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 #Inicia banco de dados 
 init_db() 
-
-subscribers =[]
 
 type_defs = gql("""
     type Author{
@@ -37,7 +34,7 @@ type_defs = gql("""
     type Book{
         id:ID!
         title:String!
-        authors:[Author!]!       
+        authors_id:Int!       
     }  
 
     type Query{
@@ -50,12 +47,13 @@ type_defs = gql("""
         updateAuthor(id:Int!,name:String!):Author!
         deleteAuthor(id:Int!): Boolean!
                 
-        createBook(title:String!,authorIds:[Int!]!):Book!
-        updateBook(id:Int!,title:String!,authorIds:[Int!]!):Book!
+        createBook(title: String!, author_id:[Int!]!):Book!
+        updateBook(id: Int!, title:String!, author_id:[Int!]!):Book!
         deleteBook(id:Int!):Boolean!               
     }
                 
-    type Subcription{
+    type Subscription{
+        authorAdicionado: Author
         bookAdicionado: Book        
     }
 """)
@@ -69,20 +67,19 @@ app.add_route("/graphql", graphql_app)
 
 #Adicionar a rota WS para lidar com o Subscription
 @app.websocket("/graphql")
-async def  websocket_endpoint(websocket:WebSocket):
+async def  websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
-    subscribers.append(websocket)
+    setSubscribers(websocket)
 
     try:
         while True:
             data = await websocket.receive_text() 
-
             await websocket.send_text(data)
     except Exception as e:
         print(f"erro Exception:{e}")
     finally:
-        subscribers.remove(websocket)
+        deleteSubscriber(websocket)
 
 @app.get("/")
 def read_root():

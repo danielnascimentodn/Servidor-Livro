@@ -3,7 +3,7 @@ from models import Author,Book
 from flask_cors import CORS
 from flask import Flask, g
 from banco import gravarAuthorDB, gravarBookDB
-import asyncio
+import asyncio  
 from asyncio import get_event_loop
 from starlette.websockets import WebSocket
 
@@ -28,13 +28,15 @@ def resolve_books(_,info):
     return books_db
 
 @mutation.field("createAuthor")
-def resolve_create_author(_, info, name):
+def resolve_create_author(_, info, name: str) -> dict:
     author = Author(id=len(authors_db) + 1, name=name)
     authors_db.append(author)
     gravarAuthorDB(name)
+
     #Notificar todos as conexões websocket conectados (assinantes)
-    for subscriber in subcribers
-        asyncio.create_task(subcriber.send_json({"type": "authorAdicionado", "payloand": author}))
+    for subscriber in subcribers:
+        print("passou aqui", subcribers)
+        asyncio.create_task(subscriber.send_json({"type" : "authorAdicionado", "payloand": author.id, "nome":author.name}))
     return author
 
 @mutation.field("updateAuthor")
@@ -52,8 +54,8 @@ def resolve_delete_author(_, info, id):
     return True
 
 @mutation.field("createBook")
-def resolve_update_author(_, title , authorIds):
-    book = Book (id=len(books_db) + 1, title = title, author_ids=authorIds)
+def resolve_create_author(_, title , author_id):
+    book = Book (id=len(books_db) + 1, title = title, author_id=author_id)
     books_db.append(book)
     gravarBookDB()
     return book
@@ -72,10 +74,19 @@ def resolve_delete_author(_, title , id):
     global books_db
     books_db=[b for b in books_db if b.id != id]
 
-@subscription.source("bookAdicionado")
-async def source_book_adicionado(_, info):
+@subscription.source("authorAdicionado")
+async def source_author_adicionado(_, info):
     while True:
         await asyncio.sleep(1)
-@subscription.field("bookAdicionado")
-def resolve_book_adicionado(obj, info):
+
+@subscription.field("authorAdicionado")
+def resolve_author_adicionado(obj, info):
     return obj["payload"]
+
+def setSubscribers(websocket:WebSocket):
+    subcribers.append(websocket)
+    return True
+
+def deleteSubscriber(websocket:WebSocket):
+    subcribers.remove(websocket)
+    return True
